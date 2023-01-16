@@ -1,0 +1,785 @@
+<form version="1.1">
+  <label>Strava Year In Review</label>
+  <fieldset submitButton="false">
+    <input type="dropdown" token="yir_param">
+      <label>Year</label>
+      <fieldForLabel>activity_year</fieldForLabel>
+      <fieldForValue>activity_year</fieldForValue>
+      <search>
+        <query>| inputlookup strava_activities.csv 
+| eval start_date_local_epoch = strptime(start_date_local, "%Y-%m-%dT%H:%M:%S.%9NZ") 
+| eval activity_year=strftime(start_date_local_epoch,"%Y") 
+| stats count by activity_year
+| sort 0 - activity_year
+| fields - count</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <default>2022</default>
+      <initialValue>2022</initialValue>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <map>
+        <search>
+          <query>| inputlookup strava_activities.csv 
+| eval start_date_local_epoch = strptime(start_date_local, "%Y-%m-%dT%H:%M:%S.%9NZ") 
+| eval activity_year=strftime(start_date_local_epoch,"%Y") 
+| eval activity_month=strftime(start_date_local_epoch,"%m") 
+| search activity_year = "$yir_param$"
+| makemv delim="," start_latlng 
+| eval lat=replace(mvindex(start_latlng,0), "\[", "") 
+| eval lat = replace(lat, " ", "") 
+| eval lon=replace(mvindex(start_latlng,1), "\]", "") 
+| eval lon = replace(lon, " ", "") 
+| search NOT lat="]" 
+| table lat, lon
+| geostats count</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="mapping.map.scrollZoom">0</option>
+        <option name="mapping.map.zoom">3</option>
+        <option name="mapping.showTiles">1</option>
+        <option name="mapping.type">marker</option>
+        <option name="refresh.display">progressbar</option>
+      </map>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <single>
+        <title># Total Activities</title>
+        <search>
+          <query>| inputlookup strava_activities.csv 
+| eval start_date_local_epoch = strptime(start_date_local, "%Y-%m-%dT%H:%M:%S.%9NZ") 
+| eval activity_year=strftime(start_date_local_epoch,"%Y")
+| eval activity_month=strftime(start_date_local_epoch,"%m")
+| search activity_year = "$yir_param$"
+| stats dc(id)</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="drilldown">none</option>
+        <option name="rangeColors">["0x53a051","0x118832"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="useColors">1</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Total Elapsed Time (Hours)</title>
+        <search>
+          <query>| inputlookup strava_activities.csv 
+| eval start_date_local_epoch = strptime(start_date_local, "%Y-%m-%dT%H:%M:%S.%9NZ") 
+| eval activity_year=strftime(start_date_local_epoch,"%Y")
+| eval activity_month=strftime(start_date_local_epoch,"%m")
+| search activity_year = "$yir_param$"
+| stats sum(elapsed_time) as elapsed_time_seconds
+| eval elapsed_time_hours = elapsed_time_seconds / 60 / 60
+| table elapsed_time_hours</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="drilldown">none</option>
+        <option name="rangeColors">["0x53a051","0x1182f3"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="useColors">1</option>
+      </single>
+    </panel>
+    <panel>
+      <chart>
+        <title>Activity Type Frequency Distribution</title>
+        <search>
+          <query>| inputlookup strava_activities.csv 
+| eval start_date_local_epoch = strptime(start_date_local, "%Y-%m-%dT%H:%M:%S.%9NZ") 
+| eval activity_year=strftime(start_date_local_epoch,"%Y") 
+| eval activity_month=strftime(start_date_local_epoch,"%m") 
+| search activity_year = "$yir_param$" 
+| stats count by type</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="charting.drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <single>
+        <title>Total Distance (Miles)</title>
+        <search>
+          <query>| inputlookup strava_activities.csv 
+| eval start_date_local_epoch = strptime(start_date_local, "%Y-%m-%dT%H:%M:%S.%9NZ") 
+| eval activity_year=strftime(start_date_local_epoch,"%Y")
+| eval activity_month=strftime(start_date_local_epoch,"%m")
+| search activity_year = "$yir_param$"
+| stats sum(distance) as distance_meters
+| eval distance_miles = round(distance_meters * 0.000621371192, 2)
+| fields distance_miles</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="drilldown">none</option>
+        <option name="rangeColors">["0x53a051","0x0877a6","0xf8be34","0xf1813f","0xcba700"]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="useColors">1</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Trips Around Earth</title>
+        <search>
+          <query>| inputlookup strava_activities.csv 
+| eval start_date_local_epoch = strptime(start_date_local, "%Y-%m-%dT%H:%M:%S.%9NZ") 
+| eval activity_year=strftime(start_date_local_epoch,"%Y")
+| eval activity_month=strftime(start_date_local_epoch,"%m")
+| search activity_year = "$yir_param$"
+| stats sum(distance) as distance_meters
+| eval trips_around_earth = round(distance_meters / 40075020, 2)
+| fields trips_around_earth</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="drilldown">none</option>
+        <option name="numberPrecision">0.00</option>
+        <option name="rangeColors">["0x53a051","0xdc4e41"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="useColors">1</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Total Elevation Gain (Feet)</title>
+        <search>
+          <query>| inputlookup strava_activities.csv 
+| eval start_date_local_epoch = strptime(start_date_local, "%Y-%m-%dT%H:%M:%S.%9NZ") 
+| eval activity_year=strftime(start_date_local_epoch,"%Y")
+| eval activity_month=strftime(start_date_local_epoch,"%m")
+| search activity_year = "$yir_param$"
+| stats sum(total_elevation_gain) as total_elevation_gain_meters
+| eval total_elevation_gain_feet = round(total_elevation_gain_meters * 3.280839895, 2)
+| fields total_elevation_gain_feet</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="drilldown">none</option>
+        <option name="rangeColors">["0x53a051","0x555"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="useColors">1</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Mt Everest Summits</title>
+        <search>
+          <query>| inputlookup strava_activities.csv 
+| eval start_date_local_epoch = strptime(start_date_local, "%Y-%m-%dT%H:%M:%S.%9NZ") 
+| eval activity_year=strftime(start_date_local_epoch,"%Y") 
+| eval activity_month=strftime(start_date_local_epoch,"%m") 
+| search activity_year = "$yir_param$" 
+| stats sum(total_elevation_gain) as total_elevation_gain_meters 
+| eval trips_to_mt_everest_summit = round(total_elevation_gain_meters / 8848.86216, 2) 
+| fields trips_to_mt_everest_summit</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="drilldown">none</option>
+        <option name="numberPrecision">0.00</option>
+        <option name="rangeColors">["0x53a051","0xff007f"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="useColors">1</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Total Run Distance (Miles)</title>
+      <single>
+        <search>
+          <query>| inputlookup strava_activities.csv 
+| eval start_date_local_epoch = strptime(start_date_local, "%Y-%m-%dT%H:%M:%S.%9NZ") 
+| eval activity_year=strftime(start_date_local_epoch,"%Y") 
+| eval activity_month=strftime(start_date_local_epoch,"%m") 
+| search activity_year = "$yir_param$" AND type=Run
+| eval distance_miles = round(distance * 0.000621371192, 2)
+| chart sum(distance_miles) as "Total Run Miles"</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Number of Marathons</title>
+      <single>
+        <search>
+          <query>| inputlookup strava_activities.csv 
+| eval start_date_local_epoch = strptime(start_date_local, "%Y-%m-%dT%H:%M:%S.%9NZ") 
+| eval activity_year=strftime(start_date_local_epoch,"%Y") 
+| eval activity_month=strftime(start_date_local_epoch,"%m") 
+| search activity_year = "2022" AND type=Run
+| eval distance_miles = round(distance * 0.000621371192, 2)
+| where distance_miles &gt; 26.1
+| stats count 
+| table count</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Total Bike Distance (Miles)</title>
+      <single>
+        <search>
+          <query>| inputlookup strava_activities.csv 
+| eval start_date_local_epoch = strptime(start_date_local, "%Y-%m-%dT%H:%M:%S.%9NZ") 
+| eval activity_year=strftime(start_date_local_epoch,"%Y") 
+| eval activity_month=strftime(start_date_local_epoch,"%m") 
+| search activity_year = "$yir_param$" AND type=Ride
+| eval distance_miles = round(distance * 0.000621371192, 2)
+| chart sum(distance_miles) as "Total Bike Miles"</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Number of Century Rides</title>
+      <single>
+        <search>
+          <query>| inputlookup strava_activities.csv 
+| eval start_date_local_epoch = strptime(start_date_local, "%Y-%m-%dT%H:%M:%S.%9NZ") 
+| eval activity_year=strftime(start_date_local_epoch,"%Y") 
+| eval activity_month=strftime(start_date_local_epoch,"%m") 
+| search type=Ride activity_year="$yir_param$"
+| eval distance_miles = round(distance * 0.000621371192, 2) 
+| eval elevation_gain_feet = round(total_elevation_gain * 3.280839895, 2) 
+| eval elapsed_time_hours = round(elapsed_time / 60 / 60 , 2)
+| where distance_miles &gt; 100
+| stats count by activity_year
+| table count</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Which days had the most activities?</title>
+        <search>
+          <query>| inputlookup strava_activities.csv 
+| eval start_date_local_epoch = strptime(start_date_local, "%Y-%m-%dT%H:%M:%S.%9NZ") 
+| eval activity_year=strftime(start_date_local_epoch,"%Y") 
+| eval activity_month=strftime(start_date_local_epoch,"%m") 
+| eval activity_day=strftime(start_date_local_epoch,"%A") 
+| search activity_year="$yir_param$" 
+| chart count by activity_day 
+| sort 0 - count</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.chart">bar</option>
+        <option name="charting.chart.showDataLabels">all</option>
+        <option name="charting.drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Top Kudo Givers</title>
+        <search>
+          <query>| inputlookup strava_activity_kudos.csv 
+| sort 0 - 1 
+| rename 
+    1 as "Kudos Count"
+    | head 15</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">-45</option>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.showDataLabels">all</option>
+        <option name="charting.drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Longest Elapsed Time Activity</title>
+      <table>
+        <search>
+          <query>| inputlookup strava_activities.csv 
+| eval start_date_local_epoch = strptime(start_date_local, "%Y-%m-%dT%H:%M:%S.%9NZ") 
+| eval activity_year=strftime(start_date_local_epoch,"%Y") 
+| eval activity_month=strftime(start_date_local_epoch,"%m") 
+| search activity_year = "$yir_param$" 
+| eventstats max(elapsed_time) as max 
+| where elapsed_time=max 
+| fields - max 
+| eval "Distance (Miles)" = round(distance * 0.000621371192, 2) 
+| eval "Elevation Gain (Feet)" = round(total_elevation_gain * 3.280839895, 2) 
+| eval "Elapsed Time" = tostring(elapsed_time, "duration")
+| eval "Avg Speed (MPH)" = round(average_speed * 2.236936, 2)
+| rename 
+    start_date_local as Date
+    name as Name 
+| table Date, Name,type,"Distance (Miles)", "Elapsed Time", "Avg Speed (MPH)", "Elevation Gain (Feet)"</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Longest Distance Activity</title>
+      <table>
+        <search>
+          <query>| inputlookup strava_activities.csv 
+| eval start_date_local_epoch = strptime(start_date_local, "%Y-%m-%dT%H:%M:%S.%9NZ") 
+| eval activity_year=strftime(start_date_local_epoch,"%Y") 
+| eval activity_month=strftime(start_date_local_epoch,"%m") 
+| search activity_year = "$yir_param$" 
+| eventstats max(distance) as max 
+| where distance=max 
+| fields - max 
+| eval "Distance (Miles)" = round(distance * 0.000621371192, 2) 
+| eval "Elevation Gain (Feet)" = round(total_elevation_gain * 3.280839895, 2) 
+| eval "Elapsed Time" = tostring(elapsed_time, "duration")
+| eval "Avg Speed (MPH)" = round(average_speed * 2.236936, 2)
+| rename 
+    start_date_local as Date
+    name as Name 
+| table Date, Name,type,"Distance (Miles)", "Elapsed Time", "Avg Speed (MPH)", "Elevation Gain (Feet)"</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Activity with Most Kudos!</title>
+      <table>
+        <search>
+          <query>| inputlookup strava_activities.csv 
+| eval start_date_local_epoch = strptime(start_date_local, "%Y-%m-%dT%H:%M:%S.%9NZ") 
+| eval activity_year=strftime(start_date_local_epoch,"%Y") 
+| eval activity_month=strftime(start_date_local_epoch,"%m") 
+| search activity_year = "$yir_param$" 
+| eventstats max(kudos_count) as max 
+| where kudos_count=max 
+| fields - max 
+| eval "Distance (Miles)" = round(distance * 0.000621371192, 2) 
+| eval "Elevation Gain (Feet)" = round(total_elevation_gain * 3.280839895, 2) 
+| eval "Elapsed Time" = tostring(elapsed_time, "duration") 
+| eval "Avg Speed (MPH)" = round(average_speed * 2.236936, 2) 
+| rename 
+    start_date_local as Date
+    name as Name 
+| table Date, Name,type,kudos_count, "Distance (Miles)", "Elapsed Time", "Avg Speed (MPH)", "Elevation Gain (Feet)"</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Longest Run</title>
+        <search>
+          <query>| inputlookup strava_activities.csv 
+| eval start_date_local_epoch = strptime(start_date_local, "%Y-%m-%dT%H:%M:%S.%9NZ") 
+| eval activity_year=strftime(start_date_local_epoch,"%Y") 
+| eval activity_month=strftime(start_date_local_epoch,"%m") 
+| search activity_year = "$yir_param$" type=Run
+| eventstats max(distance) as max 
+| where distance=max 
+| fields - max 
+| eval "Distance (Miles)" = round(distance * 0.000621371192, 2) 
+| eval "Elevation Gain (Feet)" = round(total_elevation_gain * 3.280839895, 2) 
+| eval "Elapsed Time" = tostring(elapsed_time, "duration")
+| eval "Avg Speed (MPH)" = round(average_speed * 2.236936, 2)
+| eval mile_pace = (1 / (average_speed * 0.000621371192 ))
+| eval mile_pace = tostring(mile_pace, "duration")
+| eval mile_pace =replace(mile_pace,"^...","")
+| rename 
+    start_date_local as Date
+    name as Name 
+    mile_pace as "Mile Pace"
+| table Date, Name,type,"Distance (Miles)", "Elapsed Time", "Mile Pace", "Elevation Gain (Feet)"</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Longest Bike Ride</title>
+        <search>
+          <query>| inputlookup strava_activities.csv 
+| eval start_date_local_epoch = strptime(start_date_local, "%Y-%m-%dT%H:%M:%S.%9NZ") 
+| eval activity_year=strftime(start_date_local_epoch,"%Y") 
+| eval activity_month=strftime(start_date_local_epoch,"%m") 
+| search activity_year = "$yir_param$" type=Ride
+| eventstats max(distance) as max 
+| where distance=max 
+| fields - max 
+| eval "Distance (Miles)" = round(distance * 0.000621371192, 2) 
+| eval "Elevation Gain (Feet)" = round(total_elevation_gain * 3.280839895, 2) 
+| eval "Elapsed Time" = tostring(elapsed_time, "duration")
+| eval "Avg Speed (MPH)" = round(average_speed * 2.236936, 2)
+| rename 
+    start_date_local as Date
+    name as Name 
+| table Date, Name,type,"Distance (Miles)", "Elapsed Time", "Avg Speed (MPH)", "Elevation Gain (Feet)"</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Longest Swim</title>
+        <search>
+          <query>| inputlookup strava_activities.csv 
+| eval start_date_local_epoch = strptime(start_date_local, "%Y-%m-%dT%H:%M:%S.%9NZ") 
+| eval activity_year=strftime(start_date_local_epoch,"%Y") 
+| eval activity_month=strftime(start_date_local_epoch,"%m") 
+| search activity_year = "$yir_param$" type=Swim 
+| eventstats max(distance) as max 
+| where distance=max 
+| fields - max 
+| eval "Distance (Miles)" = round(distance * 0.000621371192, 2) 
+| eval "Elapsed Time" = tostring(elapsed_time, "duration")
+| eval "Avg Pace/100m" = tostring(100 / average_speed, "duration")
+| rename 
+    start_date_local as Date
+    name as Name 
+    distance as "Distance (Meters)"
+| table Date, Name,type,"Distance (Miles)", "Distance (Meters)", "Elapsed Time", "Avg Pace/100m"</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Activity Type Distribution by Month</title>
+        <search>
+          <query>| inputlookup strava_activities.csv 
+| eval start_date_local_epoch = strptime(start_date_local, "%Y-%m-%dT%H:%M:%S.%9NZ") 
+| eval activity_year=strftime(start_date_local_epoch,"%Y") 
+| eval activity_month=strftime(start_date_local_epoch,"%m") 
+| search activity_year = "$yir_param$" 
+| chart usenull=f count by activity_month, type</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">all</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>Activity Type Distribution by Month</title>
+        <search>
+          <query>| inputlookup strava_activities.csv 
+| eval start_date_local_epoch = strptime(start_date_local, "%Y-%m-%dT%H:%M:%S.%9NZ") 
+| eval activity_year=strftime(start_date_local_epoch,"%Y") 
+| eval activity_month=strftime(start_date_local_epoch,"%m") 
+| search activity_year = "$yir_param$" 
+| chart usenull=f count by activity_month, type</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.showDataLabels">all</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Running Miles per Month</title>
+        <search>
+          <query>| inputlookup strava_activities.csv 
+| eval start_date_local_epoch = strptime(start_date_local, "%Y-%m-%dT%H:%M:%S.%9NZ") 
+| eval activity_year=strftime(start_date_local_epoch,"%Y") 
+| eval activity_month=strftime(start_date_local_epoch,"%m") 
+| search activity_year = "$yir_param$" AND type=Run
+| eval distance_miles = round(distance * 0.000621371192, 2)
+| chart sum(distance_miles) as Miles by activity_month</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.showDataLabels">all</option>
+        <option name="charting.drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <table>
+        <title>Run Retrospective Comparison</title>
+        <search>
+          <query>| inputlookup strava_activities.csv 
+| eval start_date_local_epoch = strptime(start_date_local, "%Y-%m-%dT%H:%M:%S.%9NZ") 
+| eval activity_year=strftime(start_date_local_epoch,"%Y") 
+| eval activity_month=strftime(start_date_local_epoch,"%m") 
+| search type=Run 
+| eval distance_miles = round(distance * 0.000621371192, 2) 
+| eval elevation_gain_feet = round(total_elevation_gain * 3.280839895, 2) 
+| eval elapsed_time_hours = round(elapsed_time / 60 / 60 , 2) 
+| stats 
+    sum(distance_miles) as "Distance (Miles)"
+    sum(elevation_gain_feet) as "Elevation Gain (Feet)"
+    sum(elapsed_time_hours) as "Elapsed Time (Hours)"
+    by activity_year 
+| join type=left max=0 
+    [| inputlookup strava_activities.csv 
+    | eval start_date_local_epoch = strptime(start_date_local, "%Y-%m-%dT%H:%M:%S.%9NZ") 
+    | eval activity_year=strftime(start_date_local_epoch,"%Y") 
+    | eval activity_month=strftime(start_date_local_epoch,"%m") 
+    | search type=Run 
+    | eval distance_miles = round(distance * 0.000621371192, 2) 
+    | eval elevation_gain_feet = round(total_elevation_gain * 3.280839895, 2) 
+    | eval elapsed_time_hours = round(elapsed_time / 60 / 60 , 2) 
+    | where distance_miles &gt; 26.1 
+    | stats count by activity_year 
+    | rename count as "Marathons"] 
+| rename activity_year as "Year" 
+| sort 0 - Year</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Avg Run Pace</title>
+      <single>
+        <search>
+          <query>| inputlookup strava_activities.csv 
+| eval start_date_local_epoch = strptime(start_date_local, "%Y-%m-%dT%H:%M:%S.%9NZ") 
+| eval activity_year=strftime(start_date_local_epoch,"%Y") 
+| eval activity_month=strftime(start_date_local_epoch,"%m") 
+| search type=Run AND activity_year="$yir_param$"  
+| eval distance_miles = round(distance * 0.000621371192, 2) 
+| eval elevation_gain_feet = round(total_elevation_gain * 3.280839895, 2) 
+| eval elapsed_time_hours = round(elapsed_time / 60 / 60 , 2) 
+| head 
+| eval avg_seconds_per_mile = 1609.344 / average_speed 
+| stats avg(avg_seconds_per_mile) as avg_seconds_per_mile 
+| eval avg_seconds_per_mile = tostring(avg_seconds_per_mile, "duration")
+| eval avg_seconds_per_mile=substr(avg_seconds_per_mile,5,7)</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Avg Run Heart Rate</title>
+      <single>
+        <search>
+          <query>| inputlookup strava_activities.csv 
+| eval start_date_local_epoch = strptime(start_date_local, "%Y-%m-%dT%H:%M:%S.%9NZ") 
+| eval activity_year=strftime(start_date_local_epoch,"%Y") 
+| eval activity_month=strftime(start_date_local_epoch,"%m") 
+| search type=Run AND activity_year="$yir_param$" 
+| eval distance_miles = round(distance * 0.000621371192, 2) 
+| eval elevation_gain_feet = round(total_elevation_gain * 3.280839895, 2) 
+| eval elapsed_time_hours = round(elapsed_time / 60 / 60 , 2) 
+| stats avg(average_heartrate) as avg_heartrate</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Avg Run Cadence</title>
+      <single>
+        <search>
+          <query>| inputlookup strava_activities.csv 
+| eval start_date_local_epoch = strptime(start_date_local, "%Y-%m-%dT%H:%M:%S.%9NZ") 
+| eval activity_year=strftime(start_date_local_epoch,"%Y") 
+| eval activity_month=strftime(start_date_local_epoch,"%m") 
+| search type=Run AND activity_year="$yir_param$" 
+| eval distance_miles = round(distance * 0.000621371192, 2) 
+| eval elevation_gain_feet = round(total_elevation_gain * 3.280839895, 2) 
+| eval elapsed_time_hours = round(elapsed_time / 60 / 60 , 2) 
+| stats avg(average_cadence) as avg_cadence 
+| eval avg_cadence = round(avg_cadence, 2) * 2</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Bike Miles per Month</title>
+        <search>
+          <query>| inputlookup strava_activities.csv 
+| eval start_date_local_epoch = strptime(start_date_local, "%Y-%m-%dT%H:%M:%S.%9NZ") 
+| eval activity_year=strftime(start_date_local_epoch,"%Y") 
+| eval activity_month=strftime(start_date_local_epoch,"%m") 
+| search activity_year = "$yir_param$" AND type=Ride
+| eval distance_miles = round(distance * 0.000621371192, 2)
+| chart sum(distance_miles) as Miles by activity_month</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.showDataLabels">all</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <table>
+        <title>Bike Retrospective Comparison</title>
+        <search>
+          <query>| inputlookup strava_activities.csv 
+| eval start_date_local_epoch = strptime(start_date_local, "%Y-%m-%dT%H:%M:%S.%9NZ") 
+| eval activity_year=strftime(start_date_local_epoch,"%Y") 
+| eval activity_month=strftime(start_date_local_epoch,"%m") 
+| search type=Ride 
+| eval distance_miles = round(distance * 0.000621371192, 2) 
+| eval elevation_gain_feet = round(total_elevation_gain * 3.280839895, 2) 
+| eval elapsed_time_hours = round(elapsed_time / 60 / 60 , 2) 
+| stats 
+    sum(distance_miles) as "Distance (Miles)"
+    sum(elevation_gain_feet) as "Elevation Gain (Feet)"
+    sum(elapsed_time_hours) as "Elapsed Time (Hours)"
+    by activity_year 
+| join type=left max=0 
+    [| inputlookup strava_activities.csv 
+    | eval start_date_local_epoch = strptime(start_date_local, "%Y-%m-%dT%H:%M:%S.%9NZ") 
+    | eval activity_year=strftime(start_date_local_epoch,"%Y") 
+    | eval activity_month=strftime(start_date_local_epoch,"%m") 
+    | search type=Ride 
+    | eval distance_miles = round(distance * 0.000621371192, 2) 
+    | eval elevation_gain_feet = round(total_elevation_gain * 3.280839895, 2) 
+    | eval elapsed_time_hours = round(elapsed_time / 60 / 60 , 2) 
+    | where distance_miles &gt; 100 
+    | stats count by activity_year
+    | rename count as "Centuries"] 
+| rename activity_year as "Year" 
+| sort 0 - Year</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Swim Meters per Month</title>
+        <search>
+          <query>| inputlookup strava_activities.csv 
+| eval start_date_local_epoch = strptime(start_date_local, "%Y-%m-%dT%H:%M:%S.%9NZ") 
+| eval activity_year=strftime(start_date_local_epoch,"%Y") 
+| eval activity_month=strftime(start_date_local_epoch,"%m") 
+| search activity_year = "$yir_param$" AND type=Swim
+| chart sum(distance) as Meters by activity_month</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.showDataLabels">all</option>
+        <option name="charting.drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <table>
+        <title>Swim Retrospective Comparison</title>
+        <search>
+          <query>| inputlookup strava_activities.csv 
+| eval start_date_local_epoch = strptime(start_date_local, "%Y-%m-%dT%H:%M:%S.%9NZ") 
+| eval activity_year=strftime(start_date_local_epoch,"%Y") 
+| eval activity_month=strftime(start_date_local_epoch,"%m") 
+| search type=Swim 
+| eval distance_miles = round(distance * 0.000621371192, 2) 
+| eval elevation_gain_feet = round(total_elevation_gain * 3.280839895, 2) 
+| eval elapsed_time_hours = round(elapsed_time / 60 / 60 , 2)
+| stats 
+    sum(distance_miles) as "Distance (Miles)"
+    sum(distance) as "Distance (Meters)"
+    sum(elapsed_time_hours) as "Elapsed Time (Hours)"
+    by activity_year 
+| rename activity_year as "Year"
+| sort 0 - Year</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+</form>
