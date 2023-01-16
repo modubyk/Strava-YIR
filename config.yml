@@ -1,0 +1,12 @@
+strava:
+        token_fp: "./strava_access_token.json"
+        client_id: XXXXXXXXXXXXXXXXXXXXX
+        client_secret: "XXXXXXXXXXXXXXXXXXXXX"
+        redirect_url: "http://localhost/"
+        max_results_per_page: 50
+        max_pages: 30
+        activity_start_window: 1577836800 #2020, January 1
+        strava_activity_pickle_fn: "strava_activities.pkl"
+        strava_activity_csv_fn: "strava_activities.csv"
+        strava_activity_kudos_pickle_fn: "strava_activity_kudos.pkl"
+        strava_activity_kudos_csv_fn: "strava_activity_kudos.csv"
